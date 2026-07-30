@@ -150,3 +150,34 @@ def test_llm_switch_invalid_provider():
     assert r.status_code == 200
     body = r.json()
     assert body["ok"] is False and "no soportado" in body["error"]
+
+
+def _quality_client():
+    engine = Engine(
+        store=RecordingStore(),
+        embeddings=StubEmbeddings(),
+        llm=FakeLLM(),
+        settings=Settings(llm_provider="fake", use_hybrid=False),
+    )
+    return TestClient(create_app(engine=engine)), engine
+
+
+def test_quality_off_by_default():
+    client, _ = _quality_client()
+    assert client.get("/quality").json() == {"enabled": False}
+
+
+def test_quality_toggle_on_and_off(monkeypatch):
+    # Evita cargar el cross-encoder real (~450 MB) en el hilo de fondo.
+    import zenaidarag.factory as factory
+
+    monkeypatch.setattr(factory, "build_reranker", lambda s: "STUB")
+    client, engine = _quality_client()
+
+    on = client.post("/quality", json={"enabled": True}).json()
+    assert on["ok"] is True and on["enabled"] is True
+    assert engine.settings.use_hybrid is True  # hibrido aplica de inmediato
+
+    off = client.post("/quality", json={"enabled": False}).json()
+    assert off == {"ok": True, "enabled": False, "reranker": "off"}
+    assert engine.settings.use_hybrid is False and engine.reranker is None

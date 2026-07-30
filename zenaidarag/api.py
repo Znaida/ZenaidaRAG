@@ -7,6 +7,7 @@ produccion se construye desde la config via `build_engine()`.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -63,6 +64,10 @@ class SetLLMRequest(BaseModel):
     provider: str = Field(..., description="Proveedor LLM: gemini | openai | ollama | fake")
 
 
+class SetQualityRequest(BaseModel):
+    enabled: bool = Field(..., description="Activar modo calidad (hibrido + reranking).")
+
+
 def _llm_error_message(provider: str, exc: Exception) -> str:
     """Traduce el fallo al cambiar de proveedor en un mensaje util para el usuario."""
     if provider == "gemini":
@@ -105,6 +110,29 @@ def create_app(
             app.state.engine = build_engine()
         return app.state.engine
 
+    # Por defecto la app arranca "lista" (tests, engines inyectados). La app de
+    # escritorio llama a warm_up() para precargar el modelo de embeddings en
+    # segundo plano y recien ahi marcar ready=True (evita el freeze en la 1a
+    # pregunta, que dispara la carga perezosa del modelo).
+    app.state.ready = True
+    # Estado del reranker para el indicador de la UI: off | loading | ready.
+    app.state.reranker_status = "off"
+
+    def warm_up() -> None:
+        app.state.ready = False
+
+        def _run() -> None:
+            try:
+                get_engine().embeddings.embed_query("calentando el modelo")
+            except Exception:  # noqa: BLE001, S110 — best-effort; igual se marca listo
+                pass
+            finally:
+                app.state.ready = True
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    app.state.warm_up = warm_up
+
     @app.get("/health")
     def health() -> dict:
         from zenaidarag.factory import llm_model_for
@@ -114,6 +142,8 @@ def create_app(
         provider = eng.settings.llm_provider
         return {
             "status": "ok",
+            "ready": getattr(app.state, "ready", True),
+            "reranker": getattr(app.state, "reranker_status", "off"),
             "indexed_chunks": count,
             "llm_provider": provider,
             "llm_model": llm_model_for(provider, eng.settings),
@@ -160,6 +190,41 @@ def create_app(
             "provider": provider,
             "model": llm_model_for(provider, eng.settings),
         }
+
+    @app.get("/quality")
+    def quality_state() -> dict:
+        eng = get_engine()
+        return {"enabled": bool(eng.settings.use_hybrid or eng.reranker is not None)}
+
+    @app.post("/quality")
+    def set_quality(req: SetQualityRequest) -> dict:
+        """Activa/desactiva hibrido + reranking en caliente (para corpus grandes).
+
+        Hibrido (BM25) es inmediato; el reranker carga un cross-encoder (~450 MB)
+        en segundo plano, por eso puede tardar unos segundos en surtir efecto.
+        """
+        from zenaidarag.factory import build_reranker
+
+        eng = get_engine()
+        eng.settings.use_hybrid = req.enabled
+        if not req.enabled:
+            eng.reranker = None
+            app.state.reranker_status = "off"
+            return {"ok": True, "enabled": False, "reranker": "off"}
+
+        app.state.reranker_status = "loading"
+
+        def _load_reranker() -> None:
+            try:
+                s = eng.settings.model_copy(update={"use_rerank": True})
+                eng.reranker = build_reranker(s)
+                app.state.reranker_status = "ready" if eng.reranker else "off"
+            except Exception:  # noqa: BLE001 — si falla, sigue solo con hibrido
+                eng.reranker = None
+                app.state.reranker_status = "error"
+
+        threading.Thread(target=_load_reranker, daemon=True).start()
+        return {"ok": True, "enabled": True, "reranker": "loading"}
 
     @app.post("/ask")
     async def ask(req: AskRequest):

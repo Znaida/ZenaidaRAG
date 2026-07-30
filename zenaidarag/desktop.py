@@ -72,6 +72,11 @@ def run_desktop(settings: Settings | None = None) -> None:  # pragma: no cover â
         server.should_exit = True
         raise RuntimeError("El backend no respondio a tiempo.")
 
+    # Precargar el modelo de embeddings en segundo plano: la ventana abre ya, con
+    # el cartel de "cargando", y la IA se habilita cuando termina (health.ready).
+    if hasattr(app.state, "warm_up"):
+        app.state.warm_up()
+
     class JsApi:
         def close(self) -> None:
             on_shutdown()

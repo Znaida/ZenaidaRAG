@@ -18,13 +18,14 @@ Diseñado bajo el principio **"clona y corre en 2 minutos"**.
 > veterinario.
 
 [![CI](https://github.com/Znaida/ZenaidaRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/Znaida/ZenaidaRAG/actions)
-· Licencia MIT · Python ≥3.10 · 49 tests · 85% cobertura del núcleo
+· Licencia MIT · Python ≥3.10 · 64 tests · ~80% cobertura del núcleo
 
 ---
 
 ## Estado
 
-🚧 **En construcción por fases** (ver [`docs/ROADMAP.md`](docs/ROADMAP.md)).
+✅ **Completo** — fases 0 a 7 implementadas y probadas en local (ver
+[`docs/ROADMAP.md`](docs/ROADMAP.md)).
 
 - [x] **Fase 0 — Cimientos:** esqueleto de repo, CLI, config, CI, tests de humo.
 - [x] **Fase 1 — Ingesta:** docs → chunks → embeddings locales → ChromaDB.
@@ -99,6 +100,18 @@ zenaidarag app        # abre la ventana + backend juntos
 
 <!-- Reemplazá assets/screenshot.png por una captura real de la app respondiendo
      una pregunta de veterinaria con sus fuentes citadas. -->
+
+Controles en la interfaz (todos **en caliente**, sin reiniciar):
+
+- **Cargar / eliminar documentos** con barra de progreso de ingesta.
+- **Selector de LLM** (Gemini / OpenAI / Ollama): cambia el motor al instante; si
+  el proveedor no está listo (falta API key, Ollama apagado) avisa y no rompe.
+- **Modo calidad** (toggle): activa búsqueda híbrida (BM25) + reranking
+  (cross-encoder) para corpus grandes. Apagado por defecto (respuestas ~1 s); al
+  encenderlo, el reranker carga su modelo en segundo plano y avisa *"Reranking
+  listo ✓"* cuando termina.
+- **Precarga**: al abrir, un cartel indica que el modelo se está cargando y
+  habilita el chat cuando está listo (evita que la primera pregunta se congele).
 
 ### Con Docker
 

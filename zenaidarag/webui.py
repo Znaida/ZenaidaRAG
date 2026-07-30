@@ -21,7 +21,9 @@ PAGE = """<!doctype html>
   header { padding:14px 20px; background:var(--panel); display:flex; align-items:center; gap:12px; border-bottom:2px solid var(--accent); }
   header h1 { font-size:20px; margin:0; }
   header .logo { width:34px; height:34px; border-radius:50%; object-fit:cover; display:block; }
-  header .llm-select { margin-left:auto; background:#0f172a; color:var(--text); border:1px solid #334155; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer; }
+  header .quality-toggle { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; white-space:nowrap; }
+  header .quality-toggle input { cursor:pointer; accent-color:var(--accent); }
+  header .llm-select { margin-left:12px; background:#0f172a; color:var(--text); border:1px solid #334155; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer; }
   header .llm-select:focus { outline:2px solid var(--accent); }
   header .status { margin-left:14px; font-size:13px; color:var(--muted); }
   header .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#eab308; margin-right:6px; }
@@ -59,12 +61,20 @@ PAGE = """<!doctype html>
   footer .hint { font-size:12px; color:var(--muted); }
   footer .spacer { flex:1; }
   .disclaimer { font-size:11px; color:var(--muted); padding:0 20px 8px; background:var(--panel); }
+  .loading-banner { display:none; align-items:center; gap:10px; justify-content:center; background:#78350f; color:#fed7aa; padding:9px 14px; font-size:13px; border-bottom:1px solid #92400e; }
+  .loading-banner .spin { width:14px; height:14px; border:2px solid #fed7aa; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .composer input:disabled { opacity:.6; }
 </style>
 </head>
 <body>
   <header>
     <img class="logo" src="/logo.png" alt="ZenaidaVet">
     <h1>ZenaidaVet</h1>
+    <label class="quality-toggle" title="Híbrido + reranking: mejor precisión en corpus grandes, pero más lento (usa un modelo extra en CPU).">
+      <input type="checkbox" id="qualityToggle"> Modo calidad
+    </label>
     <select class="llm-select" id="llmSelect" title="Motor de lenguaje (LLM)"></select>
     <span class="status"><span class="dot" id="dot"></span><span id="statusText">Iniciando…</span></span>
   </header>
@@ -77,6 +87,10 @@ PAGE = """<!doctype html>
              accept=".pdf,.docx,.md,.txt,.csv,.xlsx">
     </aside>
     <section class="chat">
+      <div class="loading-banner" id="loadingBanner">
+        <span class="spin"></span>
+        <span>Cargando el modelo… la IA responderá cuando este paso finalice.</span>
+      </div>
       <div id="messages"></div>
       <div class="disclaimer">Asistente de apoyo informativo. No reemplaza el criterio de un médico veterinario.</div>
       <div class="composer">
@@ -93,13 +107,30 @@ PAGE = """<!doctype html>
 
 <script>
 const $ = (id) => document.getElementById(id);
+let prevReranker = 'off';   // off | loading | ready | error
 
 async function refreshHealth() {
   try {
     const r = await fetch('/health');
     const h = await r.json();
-    $('dot').classList.add('ok');
-    $('statusText').textContent = h.llm_model + ' · ' + (h.indexed_chunks ?? 0) + ' fragmentos';
+    const ready = h.ready !== false;
+    $('dot').classList.toggle('ok', ready);
+    $('loadingBanner').style.display = ready ? 'none' : 'flex';
+    $('sendBtn').disabled = !ready;
+    $('q').disabled = !ready;
+    $('q').placeholder = ready ? 'Escribí tu pregunta…' : 'Cargando el modelo…';
+    $('statusText').textContent = ready
+      ? (h.llm_model + ' · ' + (h.indexed_chunks ?? 0) + ' fragmentos')
+      : 'Cargando modelo…';
+    // Aviso cuando el reranking termina de cargar en segundo plano.
+    const rr = h.reranker || 'off';
+    if (rr !== prevReranker) {
+      if (prevReranker === 'loading' && rr === 'ready')
+        addMsg('Reranking listo ✓ — las próximas respuestas usan reordenamiento de máxima precisión.', 'bot');
+      else if (prevReranker === 'loading' && rr === 'error')
+        addMsg('No se pudo activar el reranking; sigo respondiendo con búsqueda híbrida.', 'bot');
+      prevReranker = rr;
+    }
   } catch (e) {
     $('statusText').textContent = 'Sin conexión';
   }
@@ -145,6 +176,36 @@ async function changeLLM(e) {
   }
 }
 
+async function loadQuality() {
+  try {
+    const r = await fetch('/quality');
+    const d = await r.json();
+    $('qualityToggle').checked = !!d.enabled;
+  } catch (e) { /* si falla, queda apagado por defecto */ }
+}
+
+async function changeQuality(e) {
+  const enabled = $('qualityToggle').checked;
+  try {
+    const r = await fetch('/quality', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({enabled})
+    });
+    const d = await r.json();
+    if (!d.ok) { $('qualityToggle').checked = !enabled; return; }
+    if (enabled) {
+      const extra = d.reranker === 'loading'
+        ? ' (el reranking carga un modelo en segundo plano; puede tardar unos segundos la primera vez)' : '';
+      addMsg('Modo calidad ACTIVADO: búsqueda híbrida + reranking.' + extra, 'bot');
+    } else {
+      addMsg('Modo calidad desactivado: búsqueda semántica estándar (más rápida).', 'bot');
+    }
+  } catch (err) {
+    addMsg('Error al cambiar el modo calidad.', 'bot');
+    $('qualityToggle').checked = !enabled;
+  }
+}
+
 async function refreshDocs() {
   const ul = $('docs');
   try {
@@ -185,6 +246,7 @@ function addMsg(text, cls, sources) {
 }
 
 async function ask() {
+  if ($('sendBtn').disabled) return;   // modelo aún cargando
   const q = $('q').value.trim();
   if (!q) return;
   $('q').value = '';
@@ -301,11 +363,13 @@ $('uploadBtn').onclick = () => $('fileInput').click();
 $('fileInput').onchange = (e) => { if (e.target.files.length) uploadFiles(e.target.files); e.target.value=''; };
 $('shutdownBtn').onclick = shutdown;
 $('llmSelect').onchange = changeLLM;
+$('qualityToggle').onchange = changeQuality;
 
 refreshHealth();
 refreshDocs();
 loadLLM();
-setInterval(refreshHealth, 5000);
+loadQuality();
+setInterval(refreshHealth, 2000);
 </script>
 </body>
 </html>
