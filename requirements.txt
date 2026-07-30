@@ -1,0 +1,4 @@
+# Instalacion editable con extras de desarrollo.
+# Uso: pip install -e ".[dev]"
+# Este archivo es un atajo equivalente para quien prefiera requirements.txt.
+-e .[dev]

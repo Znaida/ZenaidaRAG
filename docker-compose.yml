@@ -1,0 +1,22 @@
+# ZenaidaRAG — orquestacion local con Docker Compose.
+# Uso:
+#   1) cp .env.example .env  (y pega tu GEMINI_API_KEY)
+#   2) docker compose up --build
+#   3) (ingesta inicial, en otra terminal):
+#      docker compose run --rm zenaidarag ingest sample_docs
+services:
+  zenaidarag:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persiste el indice vectorial y los docs reales fuera de la imagen.
+      - ./data:/app/data
+      # Cachea el modelo de embeddings entre reinicios (evita re-descargar).
+      - hf-cache:/home/appuser/.cache
+    restart: unless-stopped
+
+volumes:
+  hf-cache:

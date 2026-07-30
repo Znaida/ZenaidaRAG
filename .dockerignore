@@ -1,0 +1,23 @@
+# No copiar a la imagen: secretos, datos reales, caches, entornos.
+.env
+.env.*
+!.env.example
+data/
+!data/.gitkeep
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.git/
+.github/
+models/
+.cache/
+# Docs del repo (no necesarias en runtime). OJO: no excluir *.md en general,
+# porque sample_docs/ y README.md si se copian a la imagen.
+docs/
+CLAUDE.md

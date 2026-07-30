@@ -1,0 +1,43 @@
+# --- Secretos y config local (NUNCA commitear) ---
+.env
+.env.*
+!.env.example
+
+# --- Datos reales e indice vectorial (NUNCA commitear) ---
+data/docs/
+data/index/
+data/chroma/
+*.sqlite3
+
+# --- PDFs con copyright (solo local; ver ADR-009) ---
+# Los sample_docs/ abiertos SI se commitean; los libros reales no.
+data/**/*.pdf
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- Testing / tooling ---
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# --- Modelos descargados (sentence-transformers cache local) ---
+.cache/
+models/
+
+# --- OS / editores ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

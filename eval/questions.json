@@ -1,0 +1,16 @@
+{
+  "description": "Set de evaluacion de recuperacion sobre sample_docs/. Cada pregunta espera que el fragmento correcto provenga de 'expected_source'. Las de dominio abierto (expected_source=null) deben caer bajo el umbral (negativa honesta).",
+  "cases": [
+    {"question": "Cada cuanto debo cepillar los dientes de mi perro?", "expected_source": "higiene_dental_canina.md"},
+    {"question": "Puedo usar pasta dental humana en mi perro?", "expected_source": "higiene_dental_canina.md"},
+    {"question": "Que signos indican enfermedad dental en el perro?", "expected_source": "higiene_dental_canina.md"},
+    {"question": "A que edad se empieza a vacunar a un gatito?", "expected_source": "vacunacion_felina_basica.md"},
+    {"question": "Que enfermedades cubren las vacunas basicas del gato?", "expected_source": "vacunacion_felina_basica.md"},
+    {"question": "Es obligatoria la vacuna antirrabica en gatos?", "expected_source": "vacunacion_felina_basica.md"},
+    {"question": "Que hago si mi perro tiene un golpe de calor?", "expected_source": "primeros_auxilios_mascotas.md"},
+    {"question": "Debo inducir el vomito si mi mascota se intoxica?", "expected_source": "primeros_auxilios_mascotas.md"},
+    {"question": "Como limpio una herida superficial de mi mascota?", "expected_source": "primeros_auxilios_mascotas.md"},
+    {"question": "Cual es la capital de Francia?", "expected_source": null},
+    {"question": "Como reparo el motor de mi auto?", "expected_source": null}
+  ]
+}
