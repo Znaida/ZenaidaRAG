@@ -40,6 +40,10 @@ def build_llm(settings: Settings | None = None):
         from zenaidarag.llm.openai import OpenAIProvider
 
         return OpenAIProvider(settings.openai_api_key, settings.llm_model)
+    if provider == "ollama":
+        from zenaidarag.llm.ollama import OllamaProvider
+
+        return OllamaProvider(model=settings.llm_model, host=settings.ollama_host)
     if provider == "fake":
         from zenaidarag.llm.fake import FakeLLM
 

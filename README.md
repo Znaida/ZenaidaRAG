@@ -4,8 +4,15 @@
 documentos con **recuperación semántica**, **citación de fuentes** y **negativa
 honesta** (no alucina: si el contexto no cubre la pregunta, lo dice).
 
-Corre **100% local** (ChromaDB + embeddings locales), sin cuentas de nube
-obligatorias. Diseñado bajo el principio **"clona y corre en 2 minutos"**.
+**Indexación y recuperación 100% locales** (ChromaDB + embeddings locales, $0):
+tus documentos se procesan y buscan en tu máquina, no salen a la nube. El LLM
+que **redacta** la respuesta es intercambiable: Gemini/OpenAI (nube) por defecto,
+o **Ollama** para correr *también* la generación en local y ser 100% offline.
+Diseñado bajo el principio **"clona y corre en 2 minutos"**.
+
+> Con Gemini/OpenAI, al momento de responder se envían al proveedor **solo la
+> pregunta y los fragmentos recuperados**. Con `LLM_PROVIDER=ollama` nada sale
+> de tu equipo.
 
 > 🩺 Herramienta educativa / de apoyo. **No** reemplaza el criterio de un médico
 > veterinario.
@@ -52,6 +59,21 @@ zenaidarag ask "¿Cada cuánto cepillo a mi perro?"   # responde citando fuentes
 ```bash
 pytest        # 49 tests
 ```
+
+### Modo 100% local, sin nube (Ollama)
+
+Para que **también** la redacción de la respuesta sea local (sin API key ni
+datos hacia afuera), usá [Ollama](https://ollama.com):
+
+```bash
+ollama pull llama3            # descarga un modelo local (una vez)
+# en .env:  LLM_PROVIDER=ollama  y  LLM_MODEL=llama3
+zenaidarag ask "¿Cada cuánto cepillo a mi perro?"
+```
+
+Los embeddings y el índice ya eran locales; con Ollama el LLM también, así que
+**nada sale de tu máquina**. Por defecto Ollama escucha en `http://localhost:11434`
+(configurable con `OLLAMA_HOST`).
 
 ## App de escritorio (ZenaidaVet)
 
@@ -134,7 +156,7 @@ Interfaces desacopladas para intercambiar piezas:
 |---|---|---|
 | `Embeddings` | texto → vectores | sentence-transformers **multilingüe** local ($0) |
 | `VectorStore` | indexar / recuperar chunks | ChromaDB local |
-| `LLMProvider` | generar respuesta | Gemini (`gemini-3.5-flash-lite`); OpenAI/fake opc. |
+| `LLMProvider` | generar respuesta | Gemini (nube) por defecto; OpenAI, **Ollama** (local) o `fake` opc. |
 
 El prompt obliga a **citar fuentes** y a responder *"no tengo información
 suficiente"* cuando el contexto no alcanza (anti-alucinación, crítico en

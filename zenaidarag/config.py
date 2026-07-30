@@ -14,11 +14,13 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    # LLM (ADR-005). provider: gemini | openai | fake
+    # LLM (ADR-005). provider: gemini | openai | ollama | fake
     llm_provider: str = "gemini"
     llm_model: str = "gemini-2.0-flash"
     gemini_api_key: str = ""
     openai_api_key: str = ""
+    # Ollama (LLM local, sin nube). Requiere un servidor Ollama corriendo.
+    ollama_host: str = "http://localhost:11434"
 
     # Umbral minimo de similitud para considerar que hay contexto util.
     # Por debajo, se responde con negativa honesta (ADR-006).
