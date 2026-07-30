@@ -18,7 +18,7 @@ Diseñado bajo el principio **"clona y corre en 2 minutos"**.
 > veterinario.
 
 [![CI](https://github.com/Znaida/ZenaidaRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/Znaida/ZenaidaRAG/actions)
-· Licencia MIT · Python ≥3.10 · 64 tests · ~80% cobertura del núcleo
+· Licencia MIT · Python ≥3.10 · 66 tests · ~80% cobertura del núcleo
 
 ---
 
@@ -58,7 +58,7 @@ zenaidarag ask "¿Cada cuánto cepillo a mi perro?"   # responde citando fuentes
 - Sin gastar cuota: `LLM_PROVIDER=fake zenaidarag ask "..."` usa un LLM de prueba.
 
 ```bash
-pytest        # 49 tests
+pytest        # 66 tests
 ```
 
 ### Modo 100% local, sin nube (Ollama)
