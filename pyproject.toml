@@ -25,13 +25,18 @@ dependencies = [
     "sentence-transformers>=3.0",
     # Vector store (Fase 1, ADR-003)
     "chromadb>=0.5",
-    # LLM (Fase 2, ADR-005)
+    # LLM (Fase 2, ADR-005): OpenAI y Gemini (proveedor por defecto)
     "openai>=1.30",
+    "google-genai>=0.3",
     # API (Fase 3)
     "fastapi>=0.111",
     "uvicorn[standard]>=0.30",
     "sse-starlette>=2.1",
     "python-multipart>=0.0.9",
+    # Cliente HTTP (canales Fase 5 + healthcheck de la app de escritorio)
+    "httpx>=0.27",
+    # Busqueda hibrida BM25 (Fase 4, ADR-011)
+    "rank-bm25>=0.2",
     # App de escritorio (Fase 7)
     "pywebview>=5.0",
 ]
