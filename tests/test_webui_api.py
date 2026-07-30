@@ -169,7 +169,7 @@ def test_quality_off_by_default():
 
 def test_quality_toggle_on_and_off(monkeypatch):
     # Evita cargar el cross-encoder real (~450 MB) en el hilo de fondo.
-    import zenaidarag.factory as factory
+    from zenaidarag import factory
 
     monkeypatch.setattr(factory, "build_reranker", lambda s: "STUB")
     client, engine = _quality_client()

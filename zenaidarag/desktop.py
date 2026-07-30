@@ -39,12 +39,35 @@ def _wait_healthy(url: str, timeout: float = 60.0) -> bool:
     return False
 
 
+def _set_windows_app_id() -> None:  # pragma: no cover — solo Windows / UI
+    """Registra un AppUserModelID propio en Windows.
+
+    Sin esto, la barra de tareas agrupa la app bajo Python y muestra el icono del
+    interprete (python.exe) en vez del icono de la ventana. Con un ID propio,
+    Windows la trata como una app aparte y usa nuestro icono (logo.ico).
+    """
+    import sys
+
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "ZenaidaVet.Desktop"
+        )
+    except Exception:  # noqa: BLE001, S110 — cosmetico; si falla, icono por defecto
+        pass
+
+
 def run_desktop(settings: Settings | None = None) -> None:  # pragma: no cover — UI/red
     """Levanta backend + ventana nativa. Bloquea hasta que se cierra la ventana."""
     import uvicorn
     import webview
 
     from zenaidarag.api import build_engine, create_app
+
+    _set_windows_app_id()
 
     settings = settings or get_settings()
     host = settings.api_host

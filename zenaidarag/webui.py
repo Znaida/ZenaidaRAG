@@ -100,7 +100,7 @@ PAGE = """<!doctype html>
     </section>
   </main>
   <footer>
-    <span class="hint">ZenaidaVet corre 100% local en esta computadora.</span>
+    <span class="hint">Indexación y búsqueda locales. La respuesta la genera el motor seleccionado arriba (Ollama = 100% local).</span>
     <span class="spacer"></span>
     <button class="btn-danger" id="shutdownBtn">⏻ Apagar</button>
   </footer>
