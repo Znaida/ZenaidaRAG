@@ -43,12 +43,21 @@ def build_llm(settings: Settings | None = None):
     if provider == "ollama":
         from zenaidarag.llm.ollama import OllamaProvider
 
-        return OllamaProvider(model=settings.llm_model, host=settings.ollama_host)
+        return OllamaProvider(model=settings.ollama_model, host=settings.ollama_host)
     if provider == "fake":
         from zenaidarag.llm.fake import FakeLLM
 
         return FakeLLM()
     raise ValueError(f"llm_provider no soportado: {provider}")
+
+
+def llm_model_for(provider: str, settings: Settings) -> str:
+    """Nombre de modelo a mostrar segun el proveedor (para el header/health)."""
+    if provider == "ollama":
+        return settings.ollama_model
+    if provider == "fake":
+        return "fake"
+    return settings.llm_model  # gemini / openai
 
 
 def build_store(settings: Settings | None = None):

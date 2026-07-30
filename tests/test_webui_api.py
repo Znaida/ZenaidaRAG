@@ -125,3 +125,28 @@ def test_shutdown_calls_callback():
 def test_find_free_port_returns_int():
     port = _find_free_port(0)
     assert isinstance(port, int) and port > 0
+
+
+def test_llm_options_lists_providers():
+    r = _client().get("/llm")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {o["id"] for o in body["options"]}
+    assert {"gemini", "openai", "ollama"} <= ids
+    assert body["current"] == "gemini"  # Settings() por defecto
+
+
+def test_llm_switch_to_fake_ok():
+    client = _client()
+    r = client.post("/llm", json={"provider": "fake"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "provider": "fake", "model": "fake"}
+    # El header (health) refleja el cambio.
+    assert client.get("/health").json()["llm_provider"] == "fake"
+
+
+def test_llm_switch_invalid_provider():
+    r = _client().post("/llm", json={"provider": "no-existe"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False and "no soportado" in body["error"]

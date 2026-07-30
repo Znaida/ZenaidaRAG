@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     # Ollama (LLM local, sin nube). Requiere un servidor Ollama corriendo.
     ollama_host: str = "http://localhost:11434"
+    ollama_model: str = "llama3"
 
     # Umbral minimo de similitud para considerar que hay contexto util.
     # Por debajo, se responde con negativa honesta (ADR-006).

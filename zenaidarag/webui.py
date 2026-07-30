@@ -21,7 +21,9 @@ PAGE = """<!doctype html>
   header { padding:14px 20px; background:var(--panel); display:flex; align-items:center; gap:12px; border-bottom:2px solid var(--accent); }
   header h1 { font-size:20px; margin:0; }
   header .logo { width:34px; height:34px; border-radius:50%; object-fit:cover; display:block; }
-  header .status { margin-left:auto; font-size:13px; color:var(--muted); }
+  header .llm-select { margin-left:auto; background:#0f172a; color:var(--text); border:1px solid #334155; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer; }
+  header .llm-select:focus { outline:2px solid var(--accent); }
+  header .status { margin-left:14px; font-size:13px; color:var(--muted); }
   header .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#eab308; margin-right:6px; }
   header .dot.ok { background:#22c55e; }
   main { flex:1; display:flex; min-height:0; }
@@ -63,6 +65,7 @@ PAGE = """<!doctype html>
   <header>
     <img class="logo" src="/logo.png" alt="ZenaidaVet">
     <h1>ZenaidaVet</h1>
+    <select class="llm-select" id="llmSelect" title="Motor de lenguaje (LLM)"></select>
     <span class="status"><span class="dot" id="dot"></span><span id="statusText">Iniciando…</span></span>
   </header>
   <main>
@@ -99,6 +102,46 @@ async function refreshHealth() {
     $('statusText').textContent = h.llm_model + ' · ' + (h.indexed_chunks ?? 0) + ' fragmentos';
   } catch (e) {
     $('statusText').textContent = 'Sin conexión';
+  }
+}
+
+async function loadLLM() {
+  const sel = $('llmSelect');
+  try {
+    const r = await fetch('/llm');
+    const d = await r.json();
+    sel.innerHTML = '';
+    for (const opt of d.options) {
+      const o = document.createElement('option');
+      o.value = opt.id; o.textContent = opt.label;
+      if (opt.id === d.current) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.dataset.current = d.current;
+  } catch (e) { /* si falla, el selector queda vacio; no bloquea el chat */ }
+}
+
+async function changeLLM(e) {
+  const sel = $('llmSelect');
+  const provider = sel.value;
+  const prev = sel.dataset.current || provider;
+  try {
+    const r = await fetch('/llm', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({provider})
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      addMsg('No se pudo cambiar a ' + provider + ': ' + d.error, 'bot');
+      sel.value = prev;            // revertir la seleccion visual
+      return;
+    }
+    sel.dataset.current = provider;
+    addMsg('Motor de lenguaje cambiado a ' + provider + ' (' + d.model + ').', 'bot');
+    refreshHealth();
+  } catch (err) {
+    addMsg('Error al cambiar el motor de lenguaje.', 'bot');
+    sel.value = prev;
   }
 }
 
@@ -257,9 +300,11 @@ $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
 $('uploadBtn').onclick = () => $('fileInput').click();
 $('fileInput').onchange = (e) => { if (e.target.files.length) uploadFiles(e.target.files); e.target.value=''; };
 $('shutdownBtn').onclick = shutdown;
+$('llmSelect').onchange = changeLLM;
 
 refreshHealth();
 refreshDocs();
+loadLLM();
 setInterval(refreshHealth, 5000);
 </script>
 </body>

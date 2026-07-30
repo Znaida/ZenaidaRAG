@@ -59,6 +59,24 @@ class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Pregunta a responder.")
 
 
+class SetLLMRequest(BaseModel):
+    provider: str = Field(..., description="Proveedor LLM: gemini | openai | ollama | fake")
+
+
+def _llm_error_message(provider: str, exc: Exception) -> str:
+    """Traduce el fallo al cambiar de proveedor en un mensaje util para el usuario."""
+    if provider == "gemini":
+        return "Falta o es invalida la GEMINI_API_KEY en .env."
+    if provider == "openai":
+        return "Falta o es invalida la OPENAI_API_KEY en .env."
+    if provider == "ollama":
+        return (
+            "No se pudo conectar con Ollama. Verifica que este corriendo "
+            "(ollama serve) y que el modelo este descargado (ollama pull)."
+        )
+    return str(exc)
+
+
 def create_app(
     engine: Engine | None = None, on_shutdown: Callable[[], None] | None = None
 ) -> FastAPI:
@@ -89,13 +107,58 @@ def create_app(
 
     @app.get("/health")
     def health() -> dict:
+        from zenaidarag.factory import llm_model_for
+
         eng = get_engine()
         count = getattr(eng.store, "count", lambda: None)()
+        provider = eng.settings.llm_provider
         return {
             "status": "ok",
             "indexed_chunks": count,
-            "llm_provider": eng.settings.llm_provider,
-            "llm_model": eng.settings.llm_model,
+            "llm_provider": provider,
+            "llm_model": llm_model_for(provider, eng.settings),
+        }
+
+    # Proveedores LLM ofrecidos en el selector de la interfaz.
+    LLM_CHOICES = [
+        {"id": "gemini", "label": "Gemini (nube)"},
+        {"id": "openai", "label": "OpenAI (nube)"},
+        {"id": "ollama", "label": "Ollama (local)"},
+    ]
+
+    @app.get("/llm")
+    def llm_options() -> dict:
+        eng = get_engine()
+        return {"current": eng.settings.llm_provider, "options": LLM_CHOICES}
+
+    @app.post("/llm")
+    def set_llm(req: SetLLMRequest) -> dict:
+        """Cambia el proveedor LLM en caliente. No persiste: vale para la sesion."""
+        from zenaidarag.factory import build_llm, llm_model_for
+
+        eng = get_engine()
+        provider = req.provider
+        valid = {c["id"] for c in LLM_CHOICES} | {"fake"}
+        if provider not in valid:
+            return {"ok": False, "error": f"Proveedor no soportado: {provider}"}
+
+        new_settings = eng.settings.model_copy(update={"llm_provider": provider})
+        try:
+            new_llm = build_llm(new_settings)
+            # Chequeo de disponibilidad para dar feedback inmediato.
+            if provider == "ollama":
+                import httpx
+
+                httpx.get(f"{new_settings.ollama_host}/api/tags", timeout=3)
+        except Exception as exc:  # noqa: BLE001 — se reporta al usuario, no se rompe
+            return {"ok": False, "error": _llm_error_message(provider, exc)}
+
+        eng.llm = new_llm
+        eng.settings.llm_provider = provider
+        return {
+            "ok": True,
+            "provider": provider,
+            "model": llm_model_for(provider, eng.settings),
         }
 
     @app.post("/ask")
